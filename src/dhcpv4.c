@@ -717,6 +717,14 @@ static void dhcpv4_set_dest_addr(const struct interface *iface,
 		dest->sin_addr = req->giaddr;
 		dest->sin_port = htons(DHCPV4_SERVER_PORT);
 
+	} else if (reply_msg == DHCPV4_MSG_NAK) {
+		/*
+		 * RFC2131 §4.1: when giaddr is zero, the server broadcasts any
+		 * DHCPNAK messages to 0xffffffff
+		 */
+		dest->sin_addr.s_addr = INADDR_BROADCAST;
+		dest->sin_port = htons(DHCPV4_CLIENT_PORT);
+
 	} else if (req->ciaddr.s_addr && req->ciaddr.s_addr != dest->sin_addr.s_addr) {
 		/*
 		 * client has existing configuration (ciaddr is set) AND this
@@ -729,14 +737,6 @@ static void dhcpv4_set_dest_addr(const struct interface *iface,
 		   req->hlen != reply->hlen || !reply->yiaddr.s_addr) {
 		/*
 		 * client requests a broadcast reply OR we can't offer an IP
-		 */
-		dest->sin_addr.s_addr = INADDR_BROADCAST;
-		dest->sin_port = htons(DHCPV4_CLIENT_PORT);
-
-	} else if (!req->ciaddr.s_addr && reply_msg == DHCPV4_MSG_NAK) {
-		/*
-		 * client has no previous configuration -> no IP, so we need to
-		 * reply with a broadcast packet
 		 */
 		dest->sin_addr.s_addr = INADDR_BROADCAST;
 		dest->sin_port = htons(DHCPV4_CLIENT_PORT);
